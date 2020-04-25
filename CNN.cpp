@@ -72,10 +72,14 @@ void ConvNet::feedforward(float* image) {
 
     for(int i = 1; i < num_layers; i++) {
 <<<<<<< HEAD
+<<<<<<< HEAD
         activations[i] = (weights[i - 1].transpose() * activations[i - 1]) + biases[i - 1];
         pre_sigmoid[i] = activations[i];
         pre_sigmoid[i].doFunction(sigmoidprime);
 =======
+>>>>>>> a2f5001a9262e7936f84c502a505b967db71be29
+=======
+        activations[i] = (weights[i - 1].transpose() * activations[i - 1]) + biases[i - 1];
 >>>>>>> a2f5001a9262e7936f84c502a505b967db71be29
         activations[i].doFunction(sigmoid);
     }
