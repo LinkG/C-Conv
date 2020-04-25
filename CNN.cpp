@@ -71,9 +71,12 @@ void ConvNet::feedforward(float* image) {
     delete[] flat;
 
     for(int i = 1; i < num_layers; i++) {
-        activations[i] = weights[i - 1].transpose() * activations[i - 1] + biases[i - 1];
+<<<<<<< HEAD
+        activations[i] = (weights[i - 1].transpose() * activations[i - 1]) + biases[i - 1];
         pre_sigmoid[i] = activations[i];
         pre_sigmoid[i].doFunction(sigmoidprime);
+=======
+>>>>>>> a2f5001a9262e7936f84c502a505b967db71be29
         activations[i].doFunction(sigmoid);
     }
 }
@@ -103,5 +106,5 @@ void ConvNet::backpropogate(float* expected, Matrix &img) {
 
 //Performs one itereation of gradient descent using the provided images, learning rate, and batch size
 void ConvNet::descent(float** images, char* labels, int num_images, float learning_rate, int batch_size){
-    
+
 }
