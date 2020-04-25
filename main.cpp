@@ -31,15 +31,28 @@ int main() {
 
     ConvNet net;
     net.makeCNNRandom();
-    for(int i = 0; i < 20; i++) {
+    for(int i = 0; i < 50; i++) {
         shuffleImagesAndLabels(images, labels, num_img);
-        net.descent(images, labels, num_img, 1);
+        net.descent(images, labels, num_img, 1.2);
         std::cout << i + 1 << "\n";
+    }
+
+    int corr = 0;
+    for(int i = 0; i < num_img; i++) {
+        img.loadFromArray(images[i]);
         net.feedforward(img);
-        for(int i = 0; i < net.activations[2].dimension[0]; i++) {
-            std::cout << net.activations[2][i][0] << ", ";
+        int max = 0;
+        int val = 0;
+        for(int j = 0; j < net.activations[3].dimension[0]; j++) {
+            if(net.activations[3][j][0] > val) {
+                val = net.activations[3][j][0];
+                max = j;
+            }
         }
-        std::cout << fst << "\n";
+        if(max == (labels[i] - '0')) {
+            corr++;
+        }
+        std::cout << (corr * 100.0f)/i << "\n";
     }
     std::cout << "\nYAY" << "\n";
     return 0;

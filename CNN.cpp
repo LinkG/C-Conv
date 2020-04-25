@@ -108,6 +108,7 @@ void ConvNet::descent(float** images, char* labels, int num_images, float learni
     //Hardcoded values
     Matrix img(28, 28);
     Matrix correct(10, 1);
+    correct = correct * 0;
 
     for(int i = 0; i < num_loops; i++) {
         kernel_gradient = kernel_gradient * 0;
@@ -122,6 +123,8 @@ void ConvNet::descent(float** images, char* labels, int num_images, float learni
             
             feedforward(img);
             backpropogate(correct, img);
+
+            correct[labels[sample_no] - '0'][0] = 0;
 
             for(int k = 0; k < num_layers - 1; k++) {
                 average_biases[k] = average_biases[k] + gradients[k + 1];
