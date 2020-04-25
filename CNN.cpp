@@ -30,10 +30,6 @@ float sigmoidprime(float x) {
 //initializes the first layer of the network depending on the convolved size
 ConvNet::ConvNet():kernel(5, 5), kernel_gradient(5, 5){
     layers[0] = Matrix::getColConvolve(28, 5) * Matrix::getRowConvolve(28, 5);
-    
-    //Hardcoding the values, change to softcoded when needed
-    img.createMatrix(28, 28);
-    convolved.createMatrix(24, 24);
 
     for(int i = 0 ; i < num_layers; i++) {
         activations[i].createMatrix(layers[i], 1);
@@ -59,9 +55,12 @@ void ConvNet::makeCNNRandom() {
     }
 }
 
-//Convolves and feedforward one image of type (flaot*)
-void ConvNet::feedforward(Matrix &imq) {
-    convolved = img.convolve(kernel);
+//Convolves and feedforward one image of type (Matrix)
+void ConvNet::feedforward(Matrix &image) {
+    //Hardcoding value
+    Matrix convolved(24, 24);
+
+    convolved = image.convolve(kernel);
     float* flat = convolved.flatten();
     
     activations[0].loadFromArray(flat);
@@ -83,7 +82,7 @@ void ConvNet::feedforward(Matrix &imq) {
 //Backpropagates the error in the neurons, requires the expected values and the original img matrix
 //(float* correct_out, Matrix img)
 //Make sure the expected array is as big as the final layer of activation else segfault
-void ConvNet::backpropogate(Matrix &correct, Matrix &img) {
+void ConvNet::backpropogate(Matrix &correct, Matrix &image) {
     gradients[num_layers - 1] = (activations[num_layers - 1] - correct) ^ pre_sigmoid[num_layers - 1];
     for(int i = num_layers - 2; i >= 0; i--) {
         gradients[i] = (weights[i] * gradients[i + 1]) ^ pre_sigmoid[i];
@@ -97,7 +96,7 @@ void ConvNet::backpropogate(Matrix &correct, Matrix &img) {
 
     delete[] flat;
 
-    kernel_gradient = kernel_gradient + img.convolve(gradient_matrix);
+    kernel_gradient = kernel_gradient + image.convolve(gradient_matrix);
 }
 
 //Performs one itereation of gradient descent using the provided images, learning rate, and batch size

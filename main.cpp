@@ -4,6 +4,15 @@
 #include "CNN.h"
 #include <string.h>
 
+void display(float number[784]) {
+    for(int i1 = 0; i1 < 28; i1++) {
+        for(int j1 = 0; j1 < 28; j1++) {
+            std::cout << (number[i1*28 + j1] == 1 ? 'o' : ' ') << ' ';
+        }
+        std::cout << '\n';
+    }
+}
+
 void shuffleImagesAndLabels(float** &images, char* &labels, int size) {
     float swap1[784];
     char swap2;
@@ -42,8 +51,9 @@ int main() {
         img.loadFromArray(images[i]);
         net.feedforward(img);
         int max = 0;
-        int val = 0;
+        float val = 0;
         for(int j = 0; j < net.activations[3].dimension[0]; j++) {
+            std::cout << net.activations[3][j][0] << ",";
             if(net.activations[3][j][0] > val) {
                 val = net.activations[3][j][0];
                 max = j;
@@ -52,7 +62,7 @@ int main() {
         if(max == (labels[i] - '0')) {
             corr++;
         }
-        std::cout << (corr * 100.0f)/i << "\n";
+        std::cout << "\n" << labels[i] << " : " << (corr * 100.0f)/(i + 1) << "\n";
     }
     std::cout << "\nYAY" << "\n";
     return 0;

@@ -7,13 +7,13 @@
 class ConvNet {
 public:
     //These are hardcoded, switch to softcoded later
-    int num_layers = 3;
-    int layers[3] = {0, 50, 10};
+    int num_layers = 4;
+    int layers[4] = {0, 100, 30, 10};
 
     //Same here
-    Matrix weights[2], biases[2], activations[3], gradients[3], pre_sigmoid[3],
-            average_weights[2], average_biases[2];
-    Matrix kernel, img, convolved, kernel_gradient;
+    Matrix weights[3], biases[3], activations[4], gradients[4], pre_sigmoid[4],
+            average_weights[3], average_biases[3];
+    Matrix kernel, kernel_gradient;
 
     //Constructor, constructs kernel and create the rest of the matrices, also
     //initializes the first layer of the network depending on the convolved size
