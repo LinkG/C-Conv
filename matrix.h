@@ -74,6 +74,9 @@ public:
     //Multiplication operator(constant)
     Matrix operator * (float const &mat);
 
+    //Elementwise product operator - use '^'
+    Matrix operator ^ (Matrix const &mat);
+
     //Perform function on every element of matrix
     void doFunction(float (*func)(float));
 

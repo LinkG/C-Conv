@@ -12,7 +12,6 @@ int main() {
     ConvNet net;
 
     net.makeCNNRandom();
-    net.feedforward(images[0]);
     for(int i = 0; i < net.activations[2].dimension[0]; i++) {
         std::cout << net.activations[2][i][0] << ", ";
     }

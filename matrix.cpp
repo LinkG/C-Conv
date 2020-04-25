@@ -159,7 +159,21 @@ Matrix Matrix::operator *(float const &k) {
     Matrix result(dimension[0], dimension[1]);
     for(int i = 0; i < dimension[0]; i++) {
         for(int j = 0; j < dimension[1]; j++) {
-            result[i][j] = data[i][j] * k;
+            data[i][j] = data[i][j] * k;
+        }
+    }
+    return result;
+}
+
+//Elementwise product operator - use '^'
+Matrix Matrix::operator ^ (Matrix const &mat) {
+    if(dimension[0] != mat.dimension[0] || dimension[1] != mat.dimension[1]) {
+        throw std::invalid_argument("Cant perform element-wise product on two nn matching matrices!");
+    }
+    Matrix result(dimension[0], dimension[1]);
+    for(int i = 0; i < dimension[0]; i++) {
+        for(int j = 0; j < dimension[1]; j++) {
+            result[i][j] = data[i][j] * mat.data[i][j];
         }
     }
     return result;
