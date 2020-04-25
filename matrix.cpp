@@ -159,7 +159,7 @@ Matrix Matrix::operator *(float const &k) {
     Matrix result(dimension[0], dimension[1]);
     for(int i = 0; i < dimension[0]; i++) {
         for(int j = 0; j < dimension[1]; j++) {
-            data[i][j] = data[i][j] * k;
+            result[i][j] = data[i][j] * k;
         }
     }
     return result;
