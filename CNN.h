@@ -2,13 +2,14 @@
 #define CNN
 
 #include "matrix.h"
+#include <fstream>
 #include <random>
 
 class ConvNet {
 public:
     //These are hardcoded, switch to softcoded later
     int num_layers = 4;
-    int layers[4] = {0, 100, 30, 10};
+    int* layers;
 
     //Same here
     Matrix weights[3], biases[3], activations[4], gradients[4], pre_sigmoid[4],
@@ -32,6 +33,12 @@ public:
 
     //Performs one itereation of gradient descent using the provided images, learning rate, and batch size
     void descent(float** images, char* labels, int num_images, float learning_rate, int batch_size=8);
+
+    //Saves the entire network to a file
+    void writeToFile(const char* fname);
+
+    //Loads the network from a file
+    void loadFromFile(const char* fname);
 };
 
 #endif

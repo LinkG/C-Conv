@@ -213,8 +213,10 @@ Matrix::~Matrix() {
     if(isCreated) {
         for(int i = 0; i < dimension[0]; i++) {
             delete[] data[i];
+            data[i] = nullptr;
         }
         delete[] data;
+        data = nullptr;
         isCreated = false;
     }
 }

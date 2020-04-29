@@ -1,5 +1,31 @@
 #include "CNN.h"
 
+//Reads an array from file
+int* readArrayInt(std::ifstream &file, int size) {
+    int* ret = new int[size];
+    file.read((char*) &ret, sizeof(int));
+    return ret;
+}
+
+float* readArrayFloat(std::ifstream &file, int size) {
+    float* ret = new float[size];
+    file.read((char*) &ret, sizeof(float));
+    return ret;
+}
+
+//Writes an array to a file
+void writeArray(std::ofstream &file, float* arr, int size) {
+    for(int i = 0;i < size; i++) {
+        file.write((char*) &(arr[i]), sizeof(float));
+    }
+}
+
+void writeArray(std::ofstream &file, int* arr, int size) {
+    for(int i = 0;i < size; i++) {
+        file.write((char*) &(arr[i]), sizeof(int));
+    }
+}
+
 //Normal distribuition random number generator
 std::default_random_engine generator;
 std::normal_distribution<float> distribuition(0.0f, 1.0f);
@@ -136,4 +162,120 @@ void ConvNet::descent(float** images, char* labels, int num_images, float learni
             biases[j] = biases[j] - (average_biases[j] * (learning_rate / batch_size));
         }
     }
+}
+
+//Saves the entire network to a file
+//kernel dimensions ->  kernel -> Numlayers -> layers sizes -> weights & biases
+void ConvNet::writeToFile(const char* fname) {
+    std::ofstream file(fname, std::ios::binary | std::ios::out | std::ios::trunc);
+
+    float* temp = nullptr;
+
+    //Kernel dimensions
+    file.write((char*) &kernel.dimension[0], sizeof(int));
+    file.write((char*) &kernel.dimension[1], sizeof(int));
+
+    //kernel matrix
+    temp = kernel.flatten();
+    writeArray(file, temp, kernel.dimension[0] * kernel.dimension[1]);
+    delete[] temp;
+    temp = nullptr;
+
+    //Number of layers and layer sizes
+    file.write((char*) &num_layers, sizeof(int));
+    writeArray(file, layers, num_layers);
+
+    //weights & biases, next to teach other
+    for(int i = 0; i < (num_layers - 1); i++) {
+        //Write dimensions of weight
+        file.write((char*)&weights[i].dimension[0], sizeof(int));
+        file.write((char*)&weights[i].dimension[1], sizeof(int));
+
+        //Write the values
+        temp = weights[i].flatten();
+        writeArray(file, temp, weights[i].dimension[0] * weights[i].dimension[1]);
+        delete[] temp;
+        
+        //------------------------------------
+
+        //Write dimensions of bias
+        file.write((char*)&biases[i].dimension[0], sizeof(int));
+        file.write((char*)&biases[i].dimension[1], sizeof(int));
+
+        //Write the values
+        temp = biases[i].flatten();
+        writeArray(file, temp, biases[i].dimension[0] * biases[i].dimension[1]);
+        delete[] temp;
+        temp = nullptr;
+    }
+
+    file.close();
+}
+
+//Loads the network from a file
+//kernel dimensions ->  kernel -> Numlayers -> layers sizes -> weights & biases
+void ConvNet::loadFromFile(const char* fname) {
+    std::ifstream file(fname, std::ios::binary | std::ios::in);
+    
+    float* tempf = nullptr;
+    int* tempi = nullptr;
+    //Destroying existing kernel
+    kernel.~Matrix();
+
+    //Loading dimensions
+    tempi = readArrayInt(file, 2);
+    kernel.createMatrix(tempi[0], tempi[1]);
+
+    //Loading kernel
+    tempf = readArrayFloat(file, tempi[0] * tempi[1]);
+    kernel.loadFromArray(tempf);
+
+    //Clearing memory
+    delete[] tempf;
+    delete[] tempi;
+    tempf = nullptr;
+    tempi = nullptr;
+
+    //load num of layers along with layer sizes
+    file.read((char*) &num_layers, sizeof(int));
+    delete[] layers;
+    layers = nullptr;
+    layers = readArrayInt(file, num_layers);
+
+    //Read weights and biases in turn
+    for(int i = 0; i < (num_layers - 1); i++) {
+        //Destroy existing
+        weights[i].~Matrix();
+        biases[i].~Matrix();
+
+        //Read dimensions and create matrix
+        tempi = readArrayInt(file, 2);
+        weights[i].createMatrix(tempi[0], tempi[1]);
+
+        tempf = readArrayFloat(file, tempi[0] * tempi[1]);
+        weights[i].loadFromArray(tempf);
+
+        //Clearing memory
+        delete[] tempf;
+        delete[] tempi;
+        tempf = nullptr;
+        tempi = nullptr;
+
+        //-------------------------------
+
+        //Read dimensions and create matrix
+        tempi = readArrayInt(file, 2);
+        biases[i].createMatrix(tempi[0], tempi[1]);
+
+        tempf = readArrayFloat(file, tempi[0] * tempi[1]);
+        biases[i].loadFromArray(tempf);
+
+        //Clearing memory
+        delete[] tempf;
+        delete[] tempi;
+        tempf = nullptr;
+        tempi = nullptr;
+    }
+
+    file.close();
 }
