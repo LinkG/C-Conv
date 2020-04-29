@@ -3,22 +3,30 @@
 
 #include "matrix.h"
 #include <fstream>
+#include <string.h>
+#include <algorithm>
 #include <random>
 
 class ConvNet {
 public:
-    //These are hardcoded, switch to softcoded later
-    int num_layers = 4;
+    const int img_size = 28;
+
+    bool isConstructed;
+
+    int num_layers;
     int* layers;
+    int layer_0_dimensions[2];
 
     //Same here
-    Matrix weights[3], biases[3], activations[4], gradients[4], pre_sigmoid[4],
-            average_weights[3], average_biases[3];
+    Matrix *weights, *biases, *activations, *gradients, *pre_sigmoid,
+            *average_weights, *average_biases;
     Matrix kernel, kernel_gradient;
+
+    ConvNet();
 
     //Constructor, constructs kernel and create the rest of the matrices, also
     //initializes the first layer of the network depending on the convolved size
-    ConvNet();
+    void construct();
 
     //Gives random values to all weights, biases and kernel using a normal distribuition
     void makeCNNRandom();
@@ -39,6 +47,9 @@ public:
 
     //Loads the network from a file
     void loadFromFile(const char* fname);
+
+    //Loads the network configuration
+    void loadConfig(const char* fname);
 };
 
 #endif

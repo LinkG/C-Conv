@@ -35,35 +35,38 @@ int main() {
     float** images = data.getImages(size);
     char* labels = data.getLabels();
     Matrix img(28, 28);
-    img.loadFromArray(images[0]);
-    char fst = labels[0];
+
+    std::cout << "RUNNING\n";
 
     ConvNet net;
+    net.loadConfig("network_prop.txt");
+    net.construct();
     net.makeCNNRandom();
-    for(int i = 0; i < 50; i++) {
+    for(int i = 0; i < 5; i++) {
         shuffleImagesAndLabels(images, labels, num_img);
         net.descent(images, labels, num_img, 1.2);
         std::cout << i + 1 << "\n";
     }
 
+
+    //Inference
     int corr = 0;
+    int t = net.num_layers - 1;
     for(int i = 0; i < num_img; i++) {
         img.loadFromArray(images[i]);
         net.feedforward(img);
         int max = 0;
         float val = 0;
-        for(int j = 0; j < net.activations[3].dimension[0]; j++) {
-            std::cout << net.activations[3][j][0] << ",";
-            if(net.activations[3][j][0] > val) {
-                val = net.activations[3][j][0];
+        for(int j = 0; j < net.activations[t].dimension[0]; j++) {
+            if(net.activations[t][j][0] > val) {
+                val = net.activations[t][j][0];
                 max = j;
             }
         }
         if(max == (labels[i] - '0')) {
             corr++;
         }
-        std::cout << "\n" << labels[i] << " : " << (corr * 100.0f)/(i + 1) << "\n";
+        std::cout << "\n" << (i + 1) << ") " << labels[i] << " : " << (corr * 100.0f)/(i + 1) << "\n";
     }
-    std::cout << "\nYAY" << "\n";
     return 0;
 }

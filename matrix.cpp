@@ -17,6 +17,7 @@ Matrix::Matrix(int r, int c) {
 Matrix::Matrix() {
     dimension[0] = 0;
     dimension[1] = 0;
+    isCreated = false;
 }
 
 //Create matrix(row, col)

@@ -1,5 +1,55 @@
 #include "CNN.h"
 
+//reads int from comma seperated string
+int getInt(std::string &str) {
+    int result = atoi(&str.substr(0, str.find(','))[0]);
+    str.erase(0, str.find(',') + 1);
+    return result;
+}
+
+//reads float from comma seperated string
+float getFloat(std::string &str) {
+    float result = atof(&str.substr(0, str.find(','))[0]);
+    str.erase(0, str.find(',') + 1);
+    return result;
+}
+
+//Splits string at new line
+std::string split(std::string &str) {
+    std::string result = str.substr(0, str.find('\n'));
+    str.erase(0, str.find('\n') + 1);
+    return result;
+}
+
+int numLine(std::string &file) {
+    int n = 0;
+    for(int i = 0; i < file.length(); i++) {
+        if(file[i] == '\n') {
+            n++;
+        }
+    }
+    return n;
+}
+
+//Reads property from file
+std::string readProperty(std::string file, const std::string property) {
+    std::string value;
+    std::string new_str(file);
+
+    int num_lines = numLine(new_str);
+    for(int i = 0; i < num_lines + 1; i++) {
+        std::string line = split(new_str);
+        if(line.find(property) == 0) {
+            value = line.substr(property.length() + 1);
+            break;
+        }
+    }
+
+    value.erase(std::remove_if(value.begin(), value.end(), isspace), value.end());
+    return value;
+}
+
+
 //Reads an array from file
 int* readArrayInt(std::ifstream &file, int size) {
     int* ret = new int[size];
@@ -52,10 +102,26 @@ float sigmoidprime(float x) {
     return fl * (1 - fl);
 }
 
-//Constructor, constructs kernel and create the rest of the matrices, also
+ConvNet::ConvNet() {
+    isConstructed = false;
+    layers = nullptr;
+    num_layers = 0;
+}
+
+//Constructs kernel and create the rest of the matrices, also
 //initializes the first layer of the network depending on the convolved size
-ConvNet::ConvNet():kernel(5, 5), kernel_gradient(5, 5){
-    layers[0] = Matrix::getColConvolve(28, 5) * Matrix::getRowConvolve(28, 5);
+void ConvNet::construct() {
+    layer_0_dimensions[0] = Matrix::getRowConvolve(img_size, kernel.dimension[0]);
+    layer_0_dimensions[1] = Matrix::getColConvolve(img_size, kernel.dimension[1]);
+    layers[0] =  layer_0_dimensions[0] * layer_0_dimensions[1];
+
+    weights = new Matrix[num_layers - 1];
+    biases = new Matrix[num_layers - 1];
+    average_weights = new Matrix[num_layers - 1];
+    average_biases = new Matrix[num_layers - 1];
+    activations = new Matrix[num_layers];
+    gradients = new Matrix[num_layers];
+    pre_sigmoid = new Matrix[num_layers];
 
     for(int i = 0 ; i < num_layers; i++) {
         activations[i].createMatrix(layers[i], 1);
@@ -69,10 +135,17 @@ ConvNet::ConvNet():kernel(5, 5), kernel_gradient(5, 5){
         biases[i - 1].createMatrix(layers[i], 1);
         average_biases[i - 1].createMatrix(layers[i], 1);
     }
+
+    isConstructed = true;
 }
 
 //Gives random values to all weights, biases and kernel using a normal distribuition
 void ConvNet::makeCNNRandom() {
+    if(!isConstructed) {
+        throw std::invalid_argument("Unconstructed network");
+        return;
+    }
+
     kernel.doFunction(generateRandom);
     
     for(int i = 0; i < num_layers - 1; i++) {
@@ -83,8 +156,12 @@ void ConvNet::makeCNNRandom() {
 
 //Convolves and feedforward one image of type (Matrix)
 void ConvNet::feedforward(Matrix &image) {
-    //Hardcoding value
-    Matrix convolved(24, 24);
+    if(!isConstructed) {
+        throw std::invalid_argument("Unconstructed network");
+        return;
+    }
+
+    Matrix convolved(layer_0_dimensions[0], layer_0_dimensions[1]);
 
     convolved = image.convolve(kernel);
     float* flat = convolved.flatten();
@@ -109,6 +186,11 @@ void ConvNet::feedforward(Matrix &image) {
 //(float* correct_out, Matrix img)
 //Make sure the expected array is as big as the final layer of activation else segfault
 void ConvNet::backpropogate(Matrix &correct, Matrix &image) {
+    if(!isConstructed) {
+        throw std::invalid_argument("Unconstructed network");
+        return;
+    }
+
     gradients[num_layers - 1] = (activations[num_layers - 1] - correct) ^ pre_sigmoid[num_layers - 1];
     for(int i = num_layers - 2; i >= 0; i--) {
         gradients[i] = (weights[i] * gradients[i + 1]) ^ pre_sigmoid[i];
@@ -116,8 +198,7 @@ void ConvNet::backpropogate(Matrix &correct, Matrix &image) {
 
     float* flat  = gradients[0].flatten();
     
-    //Hardcoding values here again!
-    Matrix gradient_matrix(24, 24);
+    Matrix gradient_matrix(layer_0_dimensions[0], layer_0_dimensions[1]);
     gradient_matrix.loadFromArray(flat);
 
     delete[] flat;
@@ -127,11 +208,17 @@ void ConvNet::backpropogate(Matrix &correct, Matrix &image) {
 
 //Performs one itereation of gradient descent using the provided images, learning rate, and batch size
 void ConvNet::descent(float** images, char* labels, int num_images, float learning_rate, int batch_size){
+    if(!isConstructed) {
+        throw std::invalid_argument("Unconstructed network");
+        return;
+    }
+
     int num_loops = num_images / batch_size;
     int sample_no;
 
+    Matrix img(img_size, img_size);
+    
     //Hardcoded values
-    Matrix img(28, 28);
     Matrix correct(10, 1);
     correct = correct * 0;
 
@@ -167,6 +254,11 @@ void ConvNet::descent(float** images, char* labels, int num_images, float learni
 //Saves the entire network to a file
 //kernel dimensions ->  kernel -> Numlayers -> layers sizes -> weights & biases
 void ConvNet::writeToFile(const char* fname) {
+    if(!isConstructed) {
+        throw std::invalid_argument("Unconstructed network");
+        return;
+    }
+
     std::ofstream file(fname, std::ios::binary | std::ios::out | std::ios::trunc);
 
     float* temp = nullptr;
@@ -275,6 +367,35 @@ void ConvNet::loadFromFile(const char* fname) {
         delete[] tempi;
         tempf = nullptr;
         tempi = nullptr;
+    }
+
+    file.close();
+}
+
+//Loads the network configuration
+void ConvNet::loadConfig(const char* fname) {
+    std::ifstream file(fname, std::ios::in);
+    file.seekg(0, std::ios::end);
+    int len = file.tellg();
+    file.seekg(0);
+    std::string f_str(len, '\0');
+    file.read((char*)&f_str[0], sizeof(char) * len);
+    
+    std::string kernel_dimensions = readProperty(f_str, "kernel");
+    std::string layers_num = readProperty(f_str, "num_layers");
+    std::string layers_val = readProperty(f_str, "layers");
+
+    kernel.createMatrix(getInt(kernel_dimensions), getInt(kernel_dimensions));
+    kernel_gradient.createMatrix(getInt(kernel_dimensions), getInt(kernel_dimensions));
+
+    num_layers = getInt(layers_num) + 1;
+    
+    delete[] layers;
+
+    layers = new int[num_layers];
+
+    for(int i = 1; i < num_layers; i++) {
+        layers[i] = getInt(layers_val);
     }
 
     file.close();
