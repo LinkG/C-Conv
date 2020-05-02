@@ -259,7 +259,7 @@ void ConvNet::writeToFile(const char* fname) {
         return;
     }
 
-    std::ofstream file(fname, std::ios::binary | std::ios::out | std::ios::trunc);
+    std::ofstream file(fname, std::ios::binary | std::ios::out);
 
     float* temp = nullptr;
 

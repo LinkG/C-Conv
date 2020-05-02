@@ -69,7 +69,7 @@ int main() {
         std::cout << "\n" << (i + 1) << ") " << labels[i] << " : " << (corr * 100.0f)/(i + 1) << "\n";
     }
 
-    int ch = 0;
+    char ch = '\0';
     std::cout << "\n\nWould you like to save(y/n):\n";
     std::cin >> ch;
     if(ch == 'y') {
