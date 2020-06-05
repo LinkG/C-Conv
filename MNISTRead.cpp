@@ -36,7 +36,7 @@ int MNISTData::getMagicNum(std::ifstream& file) {
     Constructor:(string) Path to image file, (string) Path to label file
     Sets up the input streams
 */
-MNISTData::MNISTData(const char* images, const char* labels, int num = -1) {
+MNISTData::MNISTData(const std::string images, const std::string labels, int num) {
     MNISTData::labels.open(labels, std::ios::binary);
     MNISTData::images.open(images, std::ios::binary);
     number_imgs = num;
@@ -49,13 +49,13 @@ MNISTData::~MNISTData() {
 }
 
 /*
-    Parameters:(int) Number of images, (int) Image size
+    Parameters: (int) Image size
     Reads from the images data, and stores the number of images and size
     of image int the parameter variables. It returns a 2D array of unsigned chars
     that have the images. An image as an array of unsigned char that is either binary '0'
     or binary '1' depending in if the pixel is white or dark.
 */
-float** MNISTData::getImages(int& img_size) {
+bool** MNISTData::getImages(int& img_size) {
     if(images.is_open()) {
         int num_images = 0;
         if(getMagicNum(images) != 2051) std::runtime_error("INVALID IMAGES FILE");
@@ -70,15 +70,16 @@ float** MNISTData::getImages(int& img_size) {
             _data[l] = new uchar[img_size];
             images.read((char*)_data[l], img_size);
         }
-        float** returning_array = new float*[number_imgs];
+        bool** returning_array = new bool*[number_imgs];
         for(l = 0; l < number_imgs; l++) {
-            returning_array[l] = new float[img_size];
+            returning_array[l] = new bool[img_size];
             for(int k = 0; k < img_size; k++) {
-                returning_array[l][k] = _data[l][k] ? 1 : 0;
+                returning_array[l][k] = _data[l][k] ? true : false;
             }
             delete[] _data[l];
         }
         delete[] _data;
+        img_size = rows;
         return returning_array;
     } else {
         std::runtime_error("Cant open file images");

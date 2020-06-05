@@ -10,9 +10,9 @@ class MNISTData {
     std::ifstream images;
     int getMagicNum(std::ifstream&);
     public:
-    MNISTData(const char *, const char *, int);
+    MNISTData(const std::string, const std::string, int n = -1);
     char* getLabels();
-    float** getImages(int&);
+    bool** getImages(int&);
     ~MNISTData();
 };
 

@@ -53,6 +53,9 @@ public:
     //Load from array, assigns values from array, make sure its good multiples
     void loadFromArray(float* arr);
 
+    //Load from array, assigns values from array, make sure its good multiples(boolean version)
+    void loadFromArray(bool* arr);
+
     //Flattens into an array, returns a float*
     float* flatten();
 

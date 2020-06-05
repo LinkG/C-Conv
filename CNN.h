@@ -5,11 +5,13 @@
 #include <fstream>
 #include <string.h>
 #include <algorithm>
+//to display progress
+#include <iostream>
 #include <random>
 
 class ConvNet {
 public:
-    const int img_size = 28;
+    int img_size = 28;
 
     bool isConstructed;
 
@@ -40,7 +42,7 @@ public:
     void backpropogate(Matrix &expected, Matrix &img);
 
     //Performs one itereation of gradient descent using the provided images, learning rate, and batch size
-    void descent(float** images, char* labels, int num_images, float learning_rate, int batch_size=8);
+    void descent(bool** images, char* labels, int num_images, float learning_rate, int epch = -1, int batch_size=8);
 
     //Saves the entire network to a file
     void writeToFile(const char* fname);

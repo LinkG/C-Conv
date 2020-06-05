@@ -198,6 +198,15 @@ void Matrix::loadFromArray(float* arr) {
     }
 }
 
+//Load from array, assigns values from array, make sure its good multiples, otherwise segfault!(boolean version)
+void Matrix::loadFromArray(bool* arr) {
+    for(int i = 0; i < dimension[0]; i++) {
+        for(int j = 0; j < dimension[1]; j++) {
+            data[i][j] = arr[(i * dimension[1]) + j] ? 1 : 0;
+        }
+    }
+}
+
 //Flattens into an array, returns a float*
 float* Matrix::flatten(){
     float* result = new float[dimension[0] * dimension[1]];
