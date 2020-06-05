@@ -23,6 +23,11 @@ The available options are:
 | -n | Number of images to use from dataset(optional default is 10000)|
 | -d | \< path to the folder containing images-ubyte and labels-ubyte \>(optional default looks in Images directory)|
 
+An example:
+```
+./main.o -m train -s NewNetwork.dat -c network_config.txt -n 2000 -e 30 -d /home/user/datasets/mnist/Images/
+```
+In the above example the folder /home/user/datasets/mnist/Images/ would contain images-ubyte and labels-ubyte.
 
 The dataset can be downloaded from [the mnist website](http://yann.lecun.com/exdb/mnist/).
 
