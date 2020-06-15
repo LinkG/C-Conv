@@ -114,18 +114,18 @@ int main(int argc, char** argv) {
             std::cout << "Enter epochs: ";
             std::cin >> epochs;
         }
-        for(; epochs > 0; --epochs) {
-            net.descent(images_data, labels_data, num_images, lr, epochs - 1);
-            shuffleImagesAndLabels(images_data, labels_data, num_images);
-        }
         if(options[1] || options[5]) {
             std::cout << "Saving network to " << save_name << "\n";
-            net.writeToFile(save_name.c_str());
         } else {
             std::cout << "Enter file name to save to: ";
             std::getline(std::cin, save_name);
-            net.writeToFile(save_name.c_str());
         }
+        for(; epochs > 0; --epochs) {
+            net.descent(images_data, labels_data, num_images, lr, epochs - 1);
+            shuffleImagesAndLabels(images_data, labels_data, num_images);
+            net.writeToFile(save_name.c_str());
+            std::cout << "Completed one epoch and saved to file\n\n\n";
+        }        
     } else {
         std::cout << "Running inference on " << num_images << " images.";
         int correct = 0;

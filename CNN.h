@@ -36,6 +36,9 @@ public:
     //Convolves and feedforward one image of type (Matrix)
     void feedforward(Matrix &img);
 
+    //Performs max pooling operation, requires img, dimensions(row, col) and stride
+    Matrix maxPool(Matrix &img, int row, int col, int stride);
+
     //Backpropagates the error in the neurons, requires the expected values and the original img matrix
     //(float* correct_out, Matrix img)
     //Make sure the expected array is as big as the final layer of activation else segfault

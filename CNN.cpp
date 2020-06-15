@@ -164,7 +164,8 @@ void ConvNet::feedforward(Matrix &image) {
     Matrix convolved(layer_0_dimensions[0], layer_0_dimensions[1]);
 
     convolved = image.convolve(kernel);
-    float* flat = convolved.flatten();
+    Matrix max_convolved = maxPool(convolved, 2, 2, 1);
+    float* flat = max_convolved.flatten();
     
     activations[0].loadFromArray(flat);
     pre_sigmoid[0] = activations[0];
@@ -180,6 +181,29 @@ void ConvNet::feedforward(Matrix &image) {
         pre_sigmoid[i].doFunction(sigmoidprime);
         activations[i].doFunction(sigmoid);
     }
+}
+
+//Performs max pooling operation, requires dimensions(row, col) and stride
+Matrix ConvNet::maxPool(Matrix &img, int row, int col, int stride) {
+    int d[2] = {((img.dimension[0] - row) / stride) + 1, ((img.dimension[1] - col) / stride) + 1};
+    float t_arrr[d[0] * d[1]];
+    int p = 0;
+    for(int i = 0; i < img.dimension[0] - row; i += stride) {
+        for(int j = 0; j < img.dimension[1] - col; j += stride) {
+            float max_num = img[i][j];
+            for(int k = i; k < i + row; ++k) {
+                for(int l = j; l < j + col; ++l) {
+                    if(img[k][l] > max_num) {
+                        max_num = img[k][l];
+                    }
+                }
+            }
+            t_arrr[p++] = max_num;
+        }
+    }
+    Matrix ret(d[0], d[1]);
+    ret.loadFromArray(t_arrr);
+    return ret;
 }
 
 //Backpropagates the error in the neurons, requires the expected values and the original img matrix
@@ -385,7 +409,7 @@ void ConvNet::loadFromFile(const char* fname) {
 
     layer_0_dimensions[0] = Matrix::getRowConvolve(img_size, kernel.dimension[0]);
     layer_0_dimensions[1] = Matrix::getColConvolve(img_size, kernel.dimension[1]);
-    layers[0] =  layer_0_dimensions[0] * layer_0_dimensions[1];
+    layers[0] =  (layer_0_dimensions[0] - 1) * (layer_0_dimensions[1] - 1);
     kernel_gradient.createMatrix(kernel.dimension[0], kernel.dimension[1]);
     
     file.close();
@@ -427,7 +451,7 @@ void ConvNet::loadConfig(const char* fname) {
 
     layer_0_dimensions[0] = Matrix::getRowConvolve(img_size, kernel.dimension[0]);
     layer_0_dimensions[1] = Matrix::getColConvolve(img_size, kernel.dimension[1]);
-    layers[0] =  layer_0_dimensions[0] * layer_0_dimensions[1];
+    layers[0] =  (layer_0_dimensions[0] - 1) * (layer_0_dimensions[1] - 1);
     
     for(int i = 1; i < num_layers; i++) {
         layers[i] = getInt(layers_val);
