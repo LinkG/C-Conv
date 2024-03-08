@@ -15,14 +15,14 @@ public:
 
     bool isConstructed;
 
-    int num_layers;
+    int num_layers, num_kernels, **kernel_network_layers, *kernel_num_layers;
     int* layers;
-    int layer_0_dimensions[2];
 
     //Same here
     Matrix *weights, *biases, *activations, *gradients, *pre_sigmoid,
-            *average_weights, *average_biases;
-    Matrix kernel, kernel_gradient;
+            *average_weights, *average_biases, *kernel, **kernel_gradient, *kernel_filter_gradient,
+            **kernel_network_weights, **kernel_network_biases,
+            **kernel_network_activations, **kernel_network_average_weights, **kernel_network_average_biases, **kernel_network_pre_sigmoid;
 
     ConvNet();
 

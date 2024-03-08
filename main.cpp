@@ -3,6 +3,7 @@
 #include "MNISTRead.H"
 #include "CNN.h"
 #include <string.h>
+#include <time.h>
 
 void display(float number[784]) {
     for(int i1 = 0; i1 < 28; i1++) {

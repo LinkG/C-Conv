@@ -125,6 +125,33 @@ void ConvNet::construct() {
     gradients = new Matrix[num_layers];
     pre_sigmoid = new Matrix[num_layers];
 
+    kernel_filter_gradient = new Matrix[num_kernels];
+    kernel_network_average_weights = new Matrix*[num_kernels];
+    kernel_network_average_biases = new Matrix*[num_kernels];
+    kernel_network_activations = new Matrix*[num_kernels];
+    kernel_gradient = new Matrix*[num_kernels];
+    kernel_network_pre_sigmoid = new Matrix*[num_kernels];
+
+    for(int i = 0; i < num_kernels; ++i) {
+        kernel_network_average_weights[i] = new Matrix[kernel_num_layers[i] - 1];
+        kernel_network_average_biases[i] = new Matrix[kernel_num_layers[i] - 1];
+        kernel_network_activations[i] = new Matrix[kernel_num_layers[i]];
+        kernel_gradient[i] = new Matrix[kernel_num_layers[i]];
+        kernel_network_pre_sigmoid[i] = new Matrix[kernel_num_layers[i]];
+        kernel_filter_gradient[i].createMatrix(kernel[i].dimension[0], kernel[i].dimension[1]);
+
+        for(int j = 0; j < kernel_num_layers[i]; ++j) {
+            kernel_network_activations[i][j].createMatrix(kernel_network_layers[i][j], 1);
+            kernel_gradient[i][j].createMatrix(kernel_network_layers[i][j], 1);
+            kernel_network_pre_sigmoid[i][j].createMatrix(kernel_network_layers[i][j], 1);
+            if(j == 0) {
+                continue;
+            }
+            kernel_network_average_biases[i][j - 1].createMatrix(kernel_network_layers[i][j], 1);
+            kernel_network_average_weights[i][j - 1].createMatrix(kernel_network_layers[i][j-1], kernel_network_layers[i][j]);
+        }
+    }
+
     for(int i = 0 ; i < num_layers; i++) {
         activations[i].createMatrix(layers[i], 1);
         gradients[i].createMatrix(layers[i], 1);
@@ -146,7 +173,13 @@ void ConvNet::makeCNNRandom() {
         return;
     }
 
-    kernel.doFunction(generateRandom);
+    for(int i = 0; i < num_kernels; ++i) {
+        kernel[i].doFunction(generateRandom);
+        for(int j = 0; j < kernel_num_layers[i]; ++j) {
+            kernel_network_weights[i][j].doFunction(generateRandom);
+            kernel_network_biases[i][j].doFunction(generateRandom);
+        }
+    }
     
     for(int i = 0; i < num_layers - 1; i++) {
         weights[i].doFunction(generateRandom);
@@ -161,11 +194,43 @@ void ConvNet::feedforward(Matrix &image) {
         return;
     }
 
-    Matrix convolved(layer_0_dimensions[0], layer_0_dimensions[1]);
+    for(int i = 0; i < num_kernels; ++i) {
+        Matrix convolved(Matrix::getRowConvolve(img_size, kernel[i].dimension[0]), Matrix::getColConvolve(img_size, kernel[i].dimension[1]));
+        convolved = image.convolve(kernel[i]);
+        float* flat = convolved.flatten();
+        kernel_network_activations[i][0].loadFromArray(flat);
+        kernel_network_pre_sigmoid[i][0] = kernel_network_activations[i][0];
 
-    convolved = image.convolve(kernel);
-    Matrix max_convolved = maxPool(convolved, 2, 2, 1);
-    float* flat = max_convolved.flatten();
+        kernel_network_pre_sigmoid[i][0].doFunction(sigmoidprime);
+        kernel_network_activations[i][0].doFunction(sigmoid);
+
+        delete[] flat;
+
+        for(int j = 1; j < kernel_num_layers[i]; ++j) {
+            kernel_network_activations[i][j] = (kernel_network_weights[i][j-1].transpose() * kernel_network_activations[i][j-1]) + kernel_network_biases[i][j-1];
+            kernel_network_pre_sigmoid[i][j] = kernel_network_activations[i][j];
+
+            kernel_network_pre_sigmoid[i][j].doFunction(sigmoidprime);
+            kernel_network_activations[i][j].doFunction(sigmoid);
+        }
+    }
+
+    float* flat = new float[layers[0]];
+    int pos = 0;
+    for(int i = 0; i < num_kernels; ++i) {
+        float* temp_flat = kernel_network_activations[i][kernel_num_layers[i] - 1].flatten();
+        int len = kernel_network_activations[i][kernel_num_layers[i] - 1].dimension[0];
+
+        std::copy(temp_flat, temp_flat + len, flat + pos);
+
+        pos += len;
+
+        delete[] temp_flat;
+    }
+
+    //No max pooling rn
+    //Matrix max_convolved = maxPool(convolved, 2, 2, 1);
+    // float* flat = max_convolved.flatten();
     
     activations[0].loadFromArray(flat);
     pre_sigmoid[0] = activations[0];
@@ -221,13 +286,31 @@ void ConvNet::backpropogate(Matrix &correct, Matrix &image) {
     }
 
     float* flat  = gradients[0].flatten();
-    
-    Matrix gradient_matrix(layer_0_dimensions[0], layer_0_dimensions[1]);
-    gradient_matrix.loadFromArray(flat);
+    int pos = 0;
+    for(int i = 0; i < num_kernels; ++i) {
+        int len = kernel_gradient[i][kernel_num_layers[i] - 1].dimension[0];
+        float* temp_flat = new float[len];
 
+        std::copy(flat + pos, flat + len, temp_flat);
+        kernel_gradient[i][kernel_num_layers[i] - 1].loadFromArray(temp_flat);
+        pos += len;
+
+        delete[] temp_flat;
+    }
     delete[] flat;
 
-    kernel_gradient = kernel_gradient + image.convolve(gradient_matrix);
+    for(int i = 0; i < num_kernels; ++i) {
+        for(int j = kernel_num_layers[i] - 2; j >= 0; --j) {
+            kernel_gradient[i][j] = (kernel_network_weights[i][j] * kernel_gradient[i][j + 1]) ^ kernel_network_pre_sigmoid[i][j];
+        }
+
+        float* flat = kernel_gradient[i][0].flatten();
+        Matrix gradient_matrix(Matrix::getRowConvolve(img_size, kernel[i].dimension[0]), Matrix::getColConvolve(img_size, kernel[i].dimension[1]));
+        gradient_matrix.loadFromArray(flat);
+        delete[] flat;
+
+        kernel_filter_gradient[i] = kernel_filter_gradient[i] + image.convolve(gradient_matrix);
+    }
 }
 
 //Performs one itereation of gradient descent using the provided images, learning rate, and batch size
@@ -247,11 +330,19 @@ void ConvNet::descent(bool** images, char* labels, int num_images, float learnin
     correct = correct * 0;
     int cp = 0;
     for(int i = 0; i < num_loops; i++) {
-        kernel_gradient = kernel_gradient * 0;
+        for(int j = 0; j < num_kernels; ++j) {
+            kernel_filter_gradient[j] = kernel_filter_gradient[j] * 0;
+            for(int k = 0; k < kernel_num_layers[j] - 1; ++k) {
+                kernel_network_average_weights[j][k] = kernel_network_average_weights[j][k] * 0;
+                kernel_network_average_biases[j][k] = kernel_network_average_biases[j][k] * 0;
+            }
+        }
+
         for(int j = 0; j < num_layers - 1; j++) {
             average_biases[j] = average_biases[j] * 0;
             average_weights[j] = average_weights[j] * 0;
         }
+
         for(int j = 0; j < batch_size; j++) {
             sample_no = (i * batch_size) + j;
             img.loadFromArray(images[sample_no]);
@@ -266,11 +357,27 @@ void ConvNet::descent(bool** images, char* labels, int num_images, float learnin
                 average_biases[k] = average_biases[k] + gradients[k + 1];
                 average_weights[k] = average_weights[k] + (activations[k] * (gradients[k + 1].transpose()));
             }
+
+            for(int k = 0; k < num_kernels; ++k) {
+                for(int l = 0; l < kernel_num_layers[k] - 1; ++l) {
+                    kernel_network_average_weights[k][l] = kernel_network_average_weights[k][l] + (kernel_network_activations[k][l] * (kernel_gradient[k][l + 1].transpose()));
+                    kernel_network_average_biases[k][l] = kernel_network_average_biases[k][l] + kernel_gradient[k][l + 1];
+                }
+            }
         }
-        kernel = kernel - (kernel_gradient * (learning_rate / batch_size));
+        
+        float stepsize = learning_rate/batch_size;
+
+        for(int j = 0; j < num_kernels; ++j) {
+            kernel[j] = kernel[j] - (kernel_filter_gradient[j] * stepsize);
+            for(int k = 0; k < kernel_num_layers[j] - 1; ++k) {
+                kernel_network_weights[j][k] = kernel_network_weights[j][k] - (kernel_network_average_weights[j][k] * stepsize);
+                kernel_network_biases[j][k] = kernel_network_biases[j][k] - (kernel_network_average_biases[j][k] * stepsize);
+            }
+        }
         for(int j = 0; j < num_layers - 1; j++) {
-            weights[j] = weights[j] - (average_weights[j] * (learning_rate / batch_size));
-            biases[j] = biases[j] - (average_biases[j] * (learning_rate / batch_size));
+            weights[j] = weights[j] - (average_weights[j] * stepsize);
+            biases[j] = biases[j] - (average_biases[j] * stepsize);
         }
         if((i * 100) / num_loops > cp) {
             cp += 1;
@@ -289,17 +396,43 @@ void ConvNet::writeToFile(const char* fname) {
 
     std::ofstream file(fname, std::ios::binary | std::ios::out);
 
+    file.write((char*) &num_kernels, sizeof(int));
     float* temp = nullptr;
 
-    //Kernel dimensions
-    file.write((char*) &kernel.dimension[0], sizeof(int));
-    file.write((char*) &kernel.dimension[1], sizeof(int));
+    for(int i = 0; i < num_kernels; ++i) {
+        //Kernel dimensions
+        file.write((char*) &kernel[i].dimension[0], sizeof(int));
+        file.write((char*) &kernel[i].dimension[1], sizeof(int));
 
-    //kernel matrix
-    temp = kernel.flatten();
-    writeArray(file, temp, kernel.dimension[0] * kernel.dimension[1]);
-    delete[] temp;
-    temp = nullptr;
+        //Kernel matrix
+        temp = kernel[i].flatten();
+        writeArray(file, temp, kernel[i].dimension[0] * kernel[i].dimension[1]);
+        delete[] temp;
+        temp = nullptr;
+
+        //Kernel network
+        //num layers and layer sizes
+        file.write((char*) &kernel_num_layers[i], sizeof(int));
+        writeArray(file, kernel_network_layers[i], kernel_num_layers[i]);
+
+        //Kernel network weights and biases
+        for(int j = 0; j < kernel_num_layers[i] - 1; ++j) {
+            file.write((char*) &kernel_network_weights[i][j].dimension[0], sizeof(int));
+            file.write((char*) &kernel_network_weights[i][j].dimension[1], sizeof(int));
+
+            temp = kernel_network_weights[i][j].flatten();
+            writeArray(file, temp, kernel_network_weights[i][j].dimension[0] * kernel_network_weights[i][j].dimension[1]);
+            delete[] temp;
+
+            file.write((char*) &kernel_network_biases[i][j].dimension[0], sizeof(int));
+            file.write((char*) &kernel_network_biases[i][j].dimension[1], sizeof(int));
+
+            temp = kernel_network_biases[i][j].flatten();
+            writeArray(file, temp, kernel_network_biases[i][j].dimension[0] * kernel_network_biases[i][j].dimension[1]);
+            delete[] temp;
+            temp = nullptr;
+        }
+    }
 
     //Number of layers and layer sizes
     file.write((char*) &num_layers, sizeof(int));
@@ -339,22 +472,73 @@ void ConvNet::loadFromFile(const char* fname) {
     
     float* tempf = nullptr;
     int* tempi = nullptr;
-    //Destroying existing kernel
-    kernel.~Matrix();
 
-    //Loading dimensions
-    tempi = readArrayInt(file, 2);
-    kernel.createMatrix(tempi[0], tempi[1]);
+    file.read((char*) &num_kernels, sizeof(int));
+    kernel = new Matrix[num_kernels];
+    kernel_filter_gradient = new Matrix[num_kernels];
+    kernel_network_weights = new Matrix*[num_kernels];
+    kernel_network_biases = new Matrix*[num_kernels];
+    kernel_network_layers = new int*[num_kernels];
 
-    //Loading kernel
-    tempf = readArrayFloat(file, tempi[0] * tempi[1]);
-    kernel.loadFromArray(tempf);
+    for(int i = 0; i < num_kernels; ++i) {
+        //Destroy Kernel
+        kernel[i].~Matrix();
 
-    //Clearing memory
-    delete[] tempf;
-    delete[] tempi;
-    tempf = nullptr;
-    tempi = nullptr;
+        //Construct it
+        tempi = readArrayInt(file, 2);
+        kernel[i].createMatrix(tempi[0], tempi[1]);
+        kernel_filter_gradient[i].createMatrix(tempi[0], tempi[1]);
+
+        tempf = readArrayFloat(file, tempi[0] * tempi[1]);
+        kernel[i].loadFromArray(tempf);
+
+        delete[] tempf;
+        delete[] tempi;
+        tempf = nullptr;
+        tempi = nullptr;
+
+        file.read((char*) &kernel_num_layers[i], sizeof(int));
+        delete[] kernel_network_layers[i];
+        kernel_network_layers[i] = nullptr;
+        kernel_network_layers[i] = readArrayInt(file, kernel_num_layers[i]);
+
+        if(isConstructed) {
+            delete[] kernel_network_weights[i];
+            delete[] kernel_network_biases[i];
+            kernel_network_weights[i] = nullptr;
+            kernel_network_biases[i] = nullptr;
+        }
+
+        kernel_network_weights[i] = new Matrix[kernel_num_layers[i] - 1];
+        kernel_network_biases[i] = new Matrix[kernel_num_layers[i] - 1];
+
+        for(int j = 0; j < kernel_num_layers[i] - 1; ++j) {
+            kernel_network_biases[i][j].~Matrix();
+            kernel_network_weights[i][j].~Matrix();
+
+            tempi = readArrayInt(file, 2);
+            kernel_network_weights[i][j].createMatrix(tempi[0], tempi[1]);
+
+            tempf = readArrayFloat(file, tempi[0] * tempi[1]);
+            kernel_network_weights[i][j].loadFromArray(tempf);
+
+            delete[] tempi;
+            delete[] tempf;
+            tempi = nullptr;
+            tempf = nullptr;
+
+            tempi = readArrayInt(file, 2);
+            kernel_network_biases[i][j].createMatrix(tempi[0], tempi[1]);
+
+            tempf = readArrayFloat(file, tempi[0] * tempi[1]);
+            kernel_network_biases[i][j].loadFromArray(tempf);
+
+            delete[] tempi;
+            delete[] tempf;
+            tempi = nullptr;
+            tempf = nullptr;
+        }
+    }
 
     //load num of layers along with layer sizes
     file.read((char*) &num_layers, sizeof(int));
@@ -406,11 +590,6 @@ void ConvNet::loadFromFile(const char* fname) {
         tempf = nullptr;
         tempi = nullptr;
     }
-
-    layer_0_dimensions[0] = Matrix::getRowConvolve(img_size, kernel.dimension[0]);
-    layer_0_dimensions[1] = Matrix::getColConvolve(img_size, kernel.dimension[1]);
-    layers[0] =  (layer_0_dimensions[0] - 1) * (layer_0_dimensions[1] - 1);
-    kernel_gradient.createMatrix(kernel.dimension[0], kernel.dimension[1]);
     
     file.close();
 }
@@ -428,18 +607,22 @@ void ConvNet::loadConfig(const char* fname) {
     file.read((char*)&f_str[0], sizeof(char) * len);
     
     //Extract properties from file
-    std::string kernel_dimensions = readProperty(f_str, "kernel");
+    std::string kernel_number = readProperty(f_str, "num_kernels");
     std::string layers_num = readProperty(f_str, "num_layers");
     std::string layers_val = readProperty(f_str, "layers");
+    std::string kernel_layers_n = readProperty(f_str, "kernel_num_layers");
+    std::string kernel_layers_v = readProperty(f_str, "kernel_layers");
+    std::string kernel_dimensions_f = readProperty(f_str, "kernel_dimensions");
 
-    kernel.createMatrix(getInt(kernel_dimensions), getInt(kernel_dimensions));
-    kernel_gradient.createMatrix(kernel.dimension[0], kernel.dimension[1]);
+    num_kernels = getInt(kernel_number);
 
     num_layers = getInt(layers_num) + 1;
     
     delete[] layers;
 
     layers = new int[num_layers];
+    kernel_num_layers = new int[num_kernels];
+
     if(isConstructed) {
         delete[] weights;
         delete[] biases;
@@ -448,10 +631,33 @@ void ConvNet::loadConfig(const char* fname) {
     }
     weights = new Matrix[num_layers - 1];
     biases = new Matrix[num_layers - 1];
+    kernel = new Matrix[num_kernels];
+    kernel_network_layers = new int*[num_kernels];
+    kernel_network_weights = new Matrix*[num_kernels];
+    kernel_network_biases = new Matrix*[num_kernels];
 
-    layer_0_dimensions[0] = Matrix::getRowConvolve(img_size, kernel.dimension[0]);
-    layer_0_dimensions[1] = Matrix::getColConvolve(img_size, kernel.dimension[1]);
-    layers[0] =  (layer_0_dimensions[0] - 1) * (layer_0_dimensions[1] - 1);
+    layers[0] = 0;
+    for(int i = 0; i < num_kernels; ++i) {
+        kernel_num_layers[i] = getInt(kernel_layers_n) + 1;
+
+        int rows = getInt(kernel_dimensions_f), cols = getInt(kernel_dimensions_f);
+        kernel[i].createMatrix(rows, cols);
+
+        kernel_network_layers[i] = new int[kernel_num_layers[i]];
+        kernel_network_weights[i] = new Matrix[kernel_num_layers[i] - 1];
+        kernel_network_biases[i] = new Matrix[kernel_num_layers[i] - 1];
+
+        kernel_network_layers[i][0] = Matrix::getRowConvolve(img_size, rows) * Matrix::getColConvolve(img_size, cols);
+        for(int j = 1; j < kernel_num_layers[i]; ++j) {
+            kernel_network_layers[i][j] = getInt(kernel_layers_v);
+            kernel_network_weights[i][j - 1].createMatrix(kernel_network_layers[i][j - 1],
+            kernel_network_layers[i][j]);
+
+            kernel_network_biases[i][j - 1].createMatrix(kernel_network_layers[i][j], 1);
+        }
+
+        layers[0] += kernel_network_layers[i][kernel_num_layers[i] - 1];
+    }
     
     for(int i = 1; i < num_layers; i++) {
         layers[i] = getInt(layers_val);

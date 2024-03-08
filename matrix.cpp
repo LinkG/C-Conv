@@ -65,7 +65,7 @@ Matrix Matrix::convolve(Matrix &kernel, bool zeropad) {
         throw std::invalid_argument("Kernel bigger than source!");
     }
     
-    Matrix result(xtimes, ytimes);
+    Matrix result(ytimes, xtimes);
 
     for(int i = 0; i < ytimes; i++) {
         for(int j = 0; j < xtimes; j++) {
