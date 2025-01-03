@@ -1,0 +1,6 @@
+1. Compile the code - done
+2. Configure save file
+    Need to store the mini network config for each kernel head
+3. Make a kernel object
+    Store a list of matrices(kernels), fix their dimesnions one at a time
+4. Add interactions with kernel and the network

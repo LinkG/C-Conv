@@ -195,7 +195,7 @@ void ConvNet::feedforward(Matrix &image) {
     }
 
     for(int i = 0; i < num_kernels; ++i) {
-        Matrix convolved(Matrix::getRowConvolve(img_size, kernel[i].dimension[0]), Matrix::getColConvolve(img_size, kernel[i].dimension[1]));
+        Matrix convolved(Matrix::getRowConvolve(inputdim[0], kernel[i].dimension[0]), Matrix::getColConvolve(inputdim[1], kernel[i].dimension[1]));
         convolved = image.convolve(kernel[i]);
         float* flat = convolved.flatten();
         kernel_network_activations[i][0].loadFromArray(flat);
@@ -305,7 +305,7 @@ void ConvNet::backpropogate(Matrix &correct, Matrix &image) {
         }
 
         float* flat = kernel_gradient[i][0].flatten();
-        Matrix gradient_matrix(Matrix::getRowConvolve(img_size, kernel[i].dimension[0]), Matrix::getColConvolve(img_size, kernel[i].dimension[1]));
+        Matrix gradient_matrix(Matrix::getRowConvolve(inputdim[0], kernel[i].dimension[0]), Matrix::getColConvolve(inputdim[1], kernel[i].dimension[1]));
         gradient_matrix.loadFromArray(flat);
         delete[] flat;
 
@@ -323,7 +323,7 @@ void ConvNet::descent(bool** images, char* labels, int num_images, float learnin
     int num_loops = num_images / batch_size;
     int sample_no;
 
-    Matrix img(img_size, img_size);
+    Matrix img(inputdim[0], inputdim[1]);
     
     //Hardcoded values
     Matrix correct(10, 1);
@@ -387,7 +387,7 @@ void ConvNet::descent(bool** images, char* labels, int num_images, float learnin
 }
 
 //Saves the entire network to a file
-//kernel dimensions ->  kernel -> Numlayers -> layers sizes -> weights & biases
+//input_dims -> num_kernels -> kernel dimensions ->  kernel -> (kernel network) -> Numlayers -> layers sizes -> weights & biases
 void ConvNet::writeToFile(const char* fname) {
     if(!isConstructed) {
         throw std::invalid_argument("Unconstructed network");
@@ -395,6 +395,9 @@ void ConvNet::writeToFile(const char* fname) {
     }
 
     std::ofstream file(fname, std::ios::binary | std::ios::out);
+
+    file.write((char*) &inputdim[0], sizeof(int));
+    file.write((char*) &inputdim[1], sizeof(int));
 
     file.write((char*) &num_kernels, sizeof(int));
     float* temp = nullptr;
@@ -466,12 +469,15 @@ void ConvNet::writeToFile(const char* fname) {
 }
 
 //Loads the network from a file
-//kernel dimensions ->  kernel -> Numlayers -> layers sizes -> weights & biases
+//input_dims -> num_kernels -> kernel dimensions ->  kernel -> (kernel network) -> Numlayers -> layers sizes -> weights & biases
 void ConvNet::loadFromFile(const char* fname) {
     std::ifstream file(fname, std::ios::binary | std::ios::in);
     
     float* tempf = nullptr;
     int* tempi = nullptr;
+
+    file.read((char*) &inputdim[0], sizeof(int));
+    file.read((char*) &inputdim[1], sizeof(int));
 
     file.read((char*) &num_kernels, sizeof(int));
     kernel = new Matrix[num_kernels];
@@ -613,6 +619,10 @@ void ConvNet::loadConfig(const char* fname) {
     std::string kernel_layers_n = readProperty(f_str, "kernel_num_layers");
     std::string kernel_layers_v = readProperty(f_str, "kernel_layers");
     std::string kernel_dimensions_f = readProperty(f_str, "kernel_dimensions");
+    std::string inputdims = readProperty(f_str, "input_dim");
+
+    inputdim[0] = getInt(inputdims);
+    inputdim[1] = getInt(inputdims);
 
     num_kernels = getInt(kernel_number);
 
@@ -647,7 +657,7 @@ void ConvNet::loadConfig(const char* fname) {
         kernel_network_weights[i] = new Matrix[kernel_num_layers[i] - 1];
         kernel_network_biases[i] = new Matrix[kernel_num_layers[i] - 1];
 
-        kernel_network_layers[i][0] = Matrix::getRowConvolve(img_size, rows) * Matrix::getColConvolve(img_size, cols);
+        kernel_network_layers[i][0] = Matrix::getRowConvolve(inputdim[0], rows) * Matrix::getColConvolve(inputdim[1], cols);
         for(int j = 1; j < kernel_num_layers[i]; ++j) {
             kernel_network_layers[i][j] = getInt(kernel_layers_v);
             kernel_network_weights[i][j - 1].createMatrix(kernel_network_layers[i][j - 1],

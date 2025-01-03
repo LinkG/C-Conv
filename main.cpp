@@ -14,18 +14,19 @@ void display(float number[784]) {
     }
 }
 
-void shuffleImagesAndLabels(bool** &images, char* &labels, int size) {
-    bool swap1[784];
+void shuffleImagesAndLabels(bool** &images, char* &labels, int size, int row, int col) {
+    int img_size = row * col;
+    bool swap1[img_size];
     char swap2;
     int k = size / 2;
     for(int i = 0; i < k; i++) {
         int t = (rand() % k) + 1;
-        memmove(swap1, images[i], sizeof(bool) * 784);
+        memmove(swap1, images[i], sizeof(bool) * img_size);
         swap2 = labels[i];
-        memmove(images[i], images[size - t], sizeof(bool) * 784);
+        memmove(images[i], images[size - t], sizeof(bool) * img_size);
         labels[i] = labels[size - t];
         labels[size - t] = swap2;
-        memmove(images[size - t], swap1, sizeof(bool) * 784);
+        memmove(images[size - t], swap1, sizeof(bool) * img_size);
     }
 }
 
@@ -76,9 +77,20 @@ int main(int argc, char** argv) {
     std::string images = data_path + "images-ubyte", labels = data_path + "labels-ubyte";
 
     MNISTData data(images, labels, num_images);
+
     ConvNet net;
-    bool** images_data = data.getImages(net.img_size);
-    char* labels_data = data.getLabels();
+
+    //Change this for different input sizes
+    int picture_dims[2];
+    picture_dims[0] = 28;
+    picture_dims[1] = 28;
+    bool** images_data = new bool*[num_images];
+    char* labels_data = new char[num_images];
+    for(int i = 0; i < num_images; ++i) {
+        images_data[i] = new bool[picture_dims[0] * picture_dims[1]];
+    }
+    data.getImages(picture_dims[0], picture_dims[1], images_data);
+    data.getLabels(labels_data);
     std::cout << "Loaded " << num_images << " image data!\n";
     bool dta = false;
     if(options[1]) {
@@ -98,6 +110,11 @@ int main(int argc, char** argv) {
     } 
     if(!dta) {
         std::cout << "Unable to get details about network, try using -s or -c to provide network details.\n";
+        return 0;
+    }
+
+    if(net.inputdim[0] != picture_dims[0] || net.inputdim[1] != picture_dims[1]) {
+        std::cout << "Network input and image size do not match.\n";
         return 0;
     }
 
@@ -123,7 +140,7 @@ int main(int argc, char** argv) {
         }
         for(; epochs > 0; --epochs) {
             net.descent(images_data, labels_data, num_images, lr, epochs - 1);
-            shuffleImagesAndLabels(images_data, labels_data, num_images);
+            shuffleImagesAndLabels(images_data, labels_data, num_images, picture_dims[0], picture_dims[1]);
             net.writeToFile(save_name.c_str());
             std::cout << "Completed one epoch and saved to file\n\n\n";
         }        
@@ -132,7 +149,7 @@ int main(int argc, char** argv) {
         int correct = 0;
         float max;
         int maxindex;
-        Matrix img(net.img_size, net.img_size);
+        Matrix img(net.inputdim[0], net.inputdim[1]);
         for(int j = 0; j < num_images; ++j) {
             max = 0, maxindex = 0;
             img.loadFromArray(images_data[j]);

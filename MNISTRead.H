@@ -11,8 +11,8 @@ class MNISTData {
     int getMagicNum(std::ifstream&);
     public:
     MNISTData(const std::string, const std::string, int n = -1);
-    char* getLabels();
-    bool** getImages(int&);
+    int getLabels(char* store);
+    int getImages(int, int, bool** store);
     ~MNISTData();
 };
 

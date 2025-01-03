@@ -11,11 +11,10 @@
 
 class ConvNet {
 public:
-    int img_size = 28;
 
     bool isConstructed;
 
-    int num_layers, num_kernels, **kernel_network_layers, *kernel_num_layers;
+    int num_layers, num_kernels, **kernel_network_layers, *kernel_num_layers, inputdim[2];
     int* layers;
 
     //Same here

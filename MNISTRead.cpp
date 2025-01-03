@@ -55,7 +55,7 @@ MNISTData::~MNISTData() {
     that have the images. An image as an array of unsigned char that is either binary '0'
     or binary '1' depending in if the pixel is white or dark.
 */
-bool** MNISTData::getImages(int& img_size) {
+int MNISTData::getImages(int row_in, int col_in, bool** store) {
     if(images.is_open()) {
         int num_images = 0;
         if(getMagicNum(images) != 2051) std::runtime_error("INVALID IMAGES FILE");
@@ -63,24 +63,24 @@ bool** MNISTData::getImages(int& img_size) {
         images.read((char*)&num_images, sizeof(int)), num_images = reverseInt(num_images);
         images.read((char*)&rows, sizeof(int)), rows = reverseInt(rows);
         images.read((char*)&col, sizeof(int)), col = reverseInt(col);
-        img_size = rows * col;
-        number_imgs = number_imgs == -1 ? num_images : number_imgs;
+        int img_size = rows * col;
+        if(number_imgs == -1 || num_images > number_imgs || row_in != rows || col_in != col) {
+            std::runtime_error("Mismathcing array size");
+            return -1;
+        }
         uchar** _data = new uchar*[number_imgs];
         for(l = 0; l < number_imgs; l++) {
             _data[l] = new uchar[img_size];
             images.read((char*)_data[l], img_size);
         }
-        bool** returning_array = new bool*[number_imgs];
         for(l = 0; l < number_imgs; l++) {
-            returning_array[l] = new bool[img_size];
             for(int k = 0; k < img_size; k++) {
-                returning_array[l][k] = _data[l][k] ? true : false;
+                store[l][k] = _data[l][k] ? true : false;
             }
             delete[] _data[l];
         }
         delete[] _data;
-        img_size = rows;
-        return returning_array;
+        return 1;
     } else {
         std::runtime_error("Cant open file images");
         return NULL;
@@ -92,19 +92,19 @@ bool** MNISTData::getImages(int& img_size) {
     The function reads the label data and returns a unsigned char array of binary integers,
     i.e. they have to be cast to int before use
 */
-char* MNISTData::getLabels() {
+int MNISTData::getLabels(char* store) {
     if(labels.is_open()) {
         int num_labels = 0;
         if(getMagicNum(labels) != 2049) std::runtime_error("INVALID LABELS FILE");
         labels.read((char*) &num_labels, sizeof(num_labels)), num_labels = reverseInt(num_labels);
-        number_imgs = number_imgs == -1 ? num_labels : number_imgs;
-        char* _daa = new char[number_imgs];
+        if(number_imgs == -1 || num_labels > number_imgs) {
+            return -1;
+        }
         char tmp;
         for(l = 0; l < number_imgs; l++) {
             labels.read((char*)&tmp, 1);
-            _daa[l] = char(tmp + '0');
+            store[l] = char(tmp + '0');
         }
-        return _daa;
     } else {
         std::runtime_error("Cant open file labels");
         return NULL;
