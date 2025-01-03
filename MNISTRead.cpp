@@ -64,7 +64,7 @@ int MNISTData::getImages(int row_in, int col_in, bool** store) {
         images.read((char*)&rows, sizeof(int)), rows = reverseInt(rows);
         images.read((char*)&col, sizeof(int)), col = reverseInt(col);
         int img_size = rows * col;
-        if(number_imgs == -1 || num_images > number_imgs || row_in != rows || col_in != col) {
+        if(number_imgs == -1 || number_imgs > num_images || row_in != rows || col_in != col) {
             std::runtime_error("Mismathcing array size");
             return -1;
         }
@@ -83,7 +83,7 @@ int MNISTData::getImages(int row_in, int col_in, bool** store) {
         return 1;
     } else {
         std::runtime_error("Cant open file images");
-        return NULL;
+        return 0;
     }
 }
 
@@ -97,7 +97,8 @@ int MNISTData::getLabels(char* store) {
         int num_labels = 0;
         if(getMagicNum(labels) != 2049) std::runtime_error("INVALID LABELS FILE");
         labels.read((char*) &num_labels, sizeof(num_labels)), num_labels = reverseInt(num_labels);
-        if(number_imgs == -1 || num_labels > number_imgs) {
+        if(number_imgs == -1 || number_imgs > num_labels) {
+            std::runtime_error("Mismatching array size");
             return -1;
         }
         char tmp;
@@ -107,6 +108,7 @@ int MNISTData::getLabels(char* store) {
         }
     } else {
         std::runtime_error("Cant open file labels");
-        return NULL;
+        return -1;
     }
+    return 0;
 }

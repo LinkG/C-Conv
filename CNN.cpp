@@ -485,6 +485,7 @@ void ConvNet::loadFromFile(const char* fname) {
     kernel_network_weights = new Matrix*[num_kernels];
     kernel_network_biases = new Matrix*[num_kernels];
     kernel_network_layers = new int*[num_kernels];
+    kernel_num_layers = new int[num_kernels];
 
     for(int i = 0; i < num_kernels; ++i) {
         //Destroy Kernel
@@ -504,17 +505,17 @@ void ConvNet::loadFromFile(const char* fname) {
         tempi = nullptr;
 
         file.read((char*) &kernel_num_layers[i], sizeof(int));
-        delete[] kernel_network_layers[i];
-        kernel_network_layers[i] = nullptr;
-        kernel_network_layers[i] = readArrayInt(file, kernel_num_layers[i]);
 
         if(isConstructed) {
             delete[] kernel_network_weights[i];
             delete[] kernel_network_biases[i];
+            delete[] kernel_network_layers[i];
+            kernel_network_layers[i] = nullptr;
             kernel_network_weights[i] = nullptr;
             kernel_network_biases[i] = nullptr;
         }
-
+        
+        kernel_network_layers[i] = readArrayInt(file, kernel_num_layers[i]);
         kernel_network_weights[i] = new Matrix[kernel_num_layers[i] - 1];
         kernel_network_biases[i] = new Matrix[kernel_num_layers[i] - 1];
 
